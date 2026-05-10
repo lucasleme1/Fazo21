@@ -10,7 +10,7 @@
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: white; }
         
         .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .modal-alerta img { width: 280px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .modal-alerta img { width: 280px; border-radius: 20px; margin-bottom: 15px; }
 
         #mesa { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #155d2c 0%, #0a2d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 8px solid #2c1e14; box-sizing: border-box; position: relative; }
 
@@ -48,25 +48,23 @@
 <div id="modal-perdeu" class="modal-alerta">
     <img src="https://files.catbox.moe/2hwdjc.gif">
     <h2 style="color: #ff4444;">BOOM! ESTOUROU!</h2>
-    <p id="info-perdeu"></p>
-    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">NOVA CHANCE</button>
+    <button style="padding: 15px 30px; background: white; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">NOVA CHANCE</button>
 </div>
 
 <div id="modal-ganhou" class="modal-alerta">
     <img src="https://files.catbox.moe/39b2od.gif">
     <h2 style="color: #ffcc00;">VITÓRIA!</h2>
-    <p id="info-ganhou"></p>
-    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">JOGAR NOVAMENTE</button>
+    <button style="padding: 15px 30px; background: #ffcc00; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">JOGAR NOVAMENTE</button>
 </div>
 
 <div id="overlay">
     <h2 style="color: gold">BLACKJACK DUO</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
     <div style="display: flex; gap: 15px;">
-        <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
-        <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none;">ELA</button>
+        <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white;">ELE</button>
+        <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white;">ELA</button>
     </div>
-    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">ENTRAR</button>
+    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">ENTRAR</button>
 </div>
 
 <div id="mesa">
@@ -85,7 +83,7 @@
     <div class="avatar-main" id="oponente-img"></div>
     
     <div style="display: flex; flex-direction: column; align-items: center;">
-        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px; font-size: 1.2rem;">Soma: 0</div>
+        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px;">Soma: 0</div>
         <div class="hand" id="minhas-cartas"></div>
         <div class="avatar-main" id="meu-avatar-img"></div>
     </div>
@@ -99,13 +97,14 @@
 <script>
     const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("blackjack_sincronizado_v13");
+    const db = firebase.database().ref("blackjack_final_v14");
 
     let meuID = "", meuAvUrl = "";
     const sCard = document.getElementById('snd-card');
     const sBoom = document.getElementById('snd-boom');
     const sWin = document.getElementById('snd-win');
 
+    // SETUP AVATARES
     const seeds = ["Jack", "Milo", "Jasper", "Leo", "Oliver", "Aneka", "Luna", "Zoe", "Sasha", "Mia"];
     seeds.forEach(s => {
         const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}`;
@@ -134,16 +133,19 @@
         db.once('value', s => { if(!s.val() || !s.val().turno) db.update({ turno: 'Ele' }); });
     }
 
+    // ESCUTADOR PRINCIPAL
     db.on('value', (snapshot) => {
-        const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
-
-        // FECHAMENTO AUTOMÁTICO DE MODAIS (SINCRONIZAÇÃO)
-        // Se no Firebase 'resetar' for true, significa que alguém clicou em Nova Chance
-        if(d.resetarRodada) {
-            fecharModais();
-            return; // Interrompe o processamento para limpar a tela primeiro
-        }
+        const d = snapshot.val() || {};
         
+        // SINCRONIZAÇÃO DE RESET (Fecha modais de ambos)
+        if (d.statusPartida === "resetando") {
+            document.getElementById('modal-ganhou').style.display = 'none';
+            document.getElementById('modal-perdeu').style.display = 'none';
+            sWin.pause(); sWin.currentTime = 0;
+            sBoom.pause(); sBoom.currentTime = 0;
+            return; 
+        }
+
         document.getElementById('p-ele').innerText = d.pEle || 0;
         document.getElementById('p-ela').innerText = d.pEla || 0;
         if(d.avEle) document.getElementById('mini-ele').style.backgroundImage = `url('${d.avEle}')`;
@@ -152,95 +154,58 @@
         const imgOp = meuID === 'Ele' ? d.avEla : d.avEle;
         if(imgOp) document.getElementById('oponente-img').style.backgroundImage = `url('${imgOp}')`;
 
+        // Lógica de Turno
         const ind = document.getElementById('indicador-turno');
         const btns = document.getElementById('botoes-jogo');
         if(d.turno === meuID) {
             ind.innerText = "SUA VEZ"; ind.className = "turn-indicator active-turn";
             btns.classList.remove('disabled');
         } else {
-            ind.innerText = "VEZ DE " + d.turno; ind.className = "turn-indicator";
+            ind.innerText = "VEZ DE " + (d.turno || '... '); ind.className = "turn-indicator";
             btns.classList.add('disabled');
         }
 
         const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
-        const oponenteCartas = meuID === "Ele" ? (d.cEla || []) : (d.cEle || []);
+        const somaEu = minhas.reduce((a, b) => a + b, 0);
+        const somaOp = (meuID === "Ele" ? (d.cAla || []) : (d.cEle || [])).reduce((a,b)=>a+b, 0);
         
+        // Renderizar Cartas
         const area = document.getElementById('minhas-cartas');
         if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
-
         area.innerHTML = "";
-        let somaEu = minhas.reduce((a, b) => a + b, 0);
-        let somaOp = oponenteCartas.reduce((a, b) => a + b, 0);
-        
         minhas.forEach(n => {
             const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c);
         });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // VERIFICAÇÕES DE FIM DE RODADA
-        if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu', `Você estourou!`);
-            processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
-        } else if (somaOp > 21 && !d.vitoriaProcessada) {
-            exibirResultado('ganhou', `Oponente estourou!`);
-            processarVitoria(meuID);
-        }
-
-        if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
-            compararFinal(d);
+        // Mostrar modais baseado no resultado do Firebase
+        if(d.resultado && !d.resetando) {
+            if(d.resultado === "Empate") {
+                cliqueNovaChance();
+            } else if(d.resultado === meuID) {
+                document.getElementById('modal-ganhou').style.display = 'flex';
+                sWin.play();
+            } else {
+                document.getElementById('modal-perdeu').style.display = 'flex';
+                sBoom.play();
+            }
         }
     });
 
     function cliqueNovaChance() {
-        // Envia sinal para o Firebase que a rodada deve ser resetada para AMBOS
-        db.update({ 
-            resetarRodada: true,
-            cEle: [], cEla: [], 
-            parouEle: false, parouEla: false, 
-            vitoriaProcessada: false, 
-            turno: 'Ele' 
-        });
+        // Passo 1: Avisa que está resetando (isso fecha os modais do oponente)
+        db.update({ statusPartida: "resetando", resultado: null });
 
-        // Após um pequeno delay, remove o sinal de reset para permitir novas jogadas
+        // Passo 2: Limpa os dados da partida após um pequeno atraso
         setTimeout(() => {
-            db.update({ resetarRodada: false });
-        }, 500);
-    }
-
-    function fecharModais() {
-        document.getElementById('modal-ganhou').style.display = 'none';
-        document.getElementById('modal-perdeu').style.display = 'none';
-        sWin.pause(); sWin.currentTime = 0;
-        sBoom.pause(); sBoom.currentTime = 0;
-    }
-
-    function exibirResultado(tipo, texto) {
-        if(tipo === 'ganhou') {
-            sWin.play();
-            document.getElementById('info-ganhou').innerText = texto;
-            document.getElementById('modal-ganhou').style.display = 'flex';
-        } else {
-            sBoom.play();
-            document.getElementById('info-perdeu').innerText = texto;
-            document.getElementById('modal-perdeu').style.display = 'flex';
-        }
-    }
-
-    function compararFinal(d) {
-        let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
-        let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let vencedor = "";
-        if(sEle > 21) vencedor = "Ela";
-        else if(sEla > 21) vencedor = "Ele";
-        else if(sEle > sEla) vencedor = "Ele";
-        else if(sEla > sEle) vencedor = "Ela";
-        else vencedor = "Empate";
-
-        if(vencedor === meuID) exibirResultado('ganhou', "Você venceu por pontos!");
-        else if(vencedor === "Empate") cliqueNovaChance();
-        else exibirResultado('perdeu', "Oponente fez mais pontos!");
-        
-        if(vencedor !== "Empate") processarVitoria(vencedor);
+            db.update({ 
+                statusPartida: "jogando",
+                cEle: [], cEla: [], 
+                parouEle: false, parouEla: false, 
+                vitoriaProcessada: false, 
+                turno: 'Ele'
+            });
+        }, 300);
     }
 
     function comprar() {
@@ -248,16 +213,44 @@
         db.once('value', s => {
             let mao = meuID === 'Ele' ? (s.val().cEle || []) : (s.val().cEla || []);
             mao.push(n);
-            db.update({ [meuID === 'Ele' ? 'cEle' : 'cEla']: mao });
+            let novaSoma = mao.reduce((a,b)=>a+b, 0);
+            
+            let updates = { [meuID === 'Ele' ? 'cEle' : 'cEla']: mao };
+            
+            if(novaSoma > 21) {
+                updates.resultado = (meuID === 'Ele' ? 'Ela' : 'Ele');
+                processarPlacar(updates.resultado);
+            }
+            db.update(updates);
         });
     }
 
     function parar() {
         const prox = meuID === 'Ele' ? 'Ela' : 'Ele';
-        db.update({ turno: prox, [meuID === 'Ele' ? 'parouEle' : 'parouEla']: true });
+        db.once('value', s => {
+            let d = s.val();
+            let updates = { 
+                turno: prox, 
+                [meuID === 'Ele' ? 'parouEle' : 'parouEla']: true 
+            };
+            
+            // Se ambos pararam, decide o vencedor
+            if((meuID === 'Ele' && d.parouEla) || (meuID === 'Ela' && d.parouEle)) {
+                let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
+                let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
+                let v = "";
+                if(sEle > sEla) v = "Ele";
+                else if(sEla > sEle) v = "Ela";
+                else v = "Empate";
+                
+                updates.resultado = v;
+                if(v !== "Empate") processarPlacar(v);
+            }
+            db.update(updates);
+        });
     }
 
-    function processarVitoria(v) {
+    function processarPlacar(v) {
         db.once('value', s => {
             if(s.val().vitoriaProcessada) return;
             let f = v === 'Ele' ? 'pEle' : 'pEla';
