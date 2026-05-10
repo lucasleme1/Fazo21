@@ -3,37 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Duelo - Victory Update</title>
+    <title>Blackjack Duelo - Fixed & Stable</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: white; }
-        
-        /* TELAS DE ALERTA (VITÓRIA E DERROTA) */
-        .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .modal-alerta img { width: 250px; border-radius: 20px; margin-bottom: 15px; }
-
-        #mesa { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #155d2c 0%, #0a2d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 8px solid #2c1e14; box-sizing: border-box; position: relative; }
-
+        .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .modal-alerta img { width: 260px; border-radius: 20px; margin-bottom: 15px; }
+        #mesa { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #155d2c 0%, #0a2d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 8px solid #2c1e14; box-sizing: border-box; }
         .scoreboard { display: flex; justify-content: space-between; width: 95%; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; border: 1px solid #444; margin-top: 10px; align-items: center; }
         .score-val { display: block; font-size: 1.5rem; color: #ffcc00; font-weight: bold; }
         .mini-av { width: 45px; height: 45px; border-radius: 50%; border: 2px solid gold; background-size: cover; }
-
         .turn-indicator { padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid #555; }
-        .active-turn { background: #ffcc00; color: #000; border-color: #fff; box-shadow: 0 0 10px #ffcc00; }
-
+        .active-turn { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
         .avatar-main { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.4); background-size: cover; background-color: #222; }
         .hand { display: flex; gap: -45px; min-height: 110px; padding-left: 45px; }
         .card { width: 75px; height: 105px; background: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: black; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); margin-left: -45px; animation: dealCard 0.4s ease-out forwards; }
-        
         @keyframes dealCard { from { transform: translate(150px, -150px) rotate(30deg); opacity: 0; } to { transform: translate(0, 0) rotate(0deg); opacity: 1; } }
-
         .controls { width: 100%; display: flex; justify-content: space-evenly; padding-bottom: 25px; }
         .disabled { opacity: 0.2; pointer-events: none; filter: grayscale(1); }
         .btn-game { width: 75px; height: 75px; border-radius: 50%; border: 4px solid white; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-hit { background: #0066ff; }
         .btn-stay { background: #dd0000; }
-        
         #overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px; }
         .avatar-opt { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background-size: cover; }
@@ -42,32 +33,30 @@
 </head>
 <body>
 
-<audio id="snd-card" preload="auto" src="https://files.catbox.moe/n9jekp.m4a"></audio>
-<audio id="snd-boom" preload="auto" src="https://files.catbox.moe/vydo44.mp3"></audio>
-<audio id="snd-win" preload="auto" src="https://files.catbox.moe/p6x15o.mp3"></audio>
+<audio id="snd-card" src="https://files.catbox.moe/n9jekp.m4a"></audio>
+<audio id="snd-boom" src="https://files.catbox.moe/vydo44.mp3"></audio>
+<audio id="snd-win" src="https://files.catbox.moe/p6x15o.mp3"></audio>
 
 <div id="modal-perdeu" class="modal-alerta">
     <img src="https://files.catbox.moe/2hwdjc.gif">
     <h2 style="color: #ff4444;">ESTOUROU!</h2>
-    <p id="info-perdeu"></p>
-    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">TENTAR DE NOVO</button>
+    <button style="padding: 15px 30px; background: white; border-radius: 10px; font-weight: bold; border: none;" onclick="novoJogo()">TENTAR DE NOVO</button>
 </div>
 
 <div id="modal-ganhou" class="modal-alerta">
-    <img src="https://files.catbox.moe/xkxzyl.webp">
-    <h2 style="color: #ffcc00;">VOCÊ GANHOU!</h2>
-    <p id="info-ganhou"></p>
-    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">PRÓXIMA PARTIDA</button>
+    <img src="https://files.catbox.moe/39b2od.gif">
+    <h2 style="color: #ffcc00;">VITÓRIA!</h2>
+    <button style="padding: 15px 30px; background: #ffcc00; border-radius: 10px; font-weight: bold; border: none;" onclick="novoJogo()">NOVA PARTIDA</button>
 </div>
 
 <div id="overlay">
-    <h2 style="color: gold">BLACKJACK ARENA</h2>
+    <h2 style="color: gold">BLACKJACK DUO</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
     <div style="display: flex; gap: 15px;">
         <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
         <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none;">ELA</button>
     </div>
-    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">JOGAR</button>
+    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">JOGAR</button>
 </div>
 
 <div id="mesa">
@@ -82,15 +71,12 @@
             <span id="p-ela" class="score-val">0</span>
         </div>
     </div>
-
     <div class="avatar-main" id="oponente-img"></div>
-    
     <div style="display: flex; flex-direction: column; align-items: center;">
         <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px;">Soma: 0</div>
         <div class="hand" id="minhas-cartas"></div>
         <div class="avatar-main" id="meu-avatar-img"></div>
     </div>
-
     <div class="controls" id="botoes-jogo">
         <div class="btn-game btn-hit" onclick="comprar()">PEDIR</div>
         <div class="btn-game btn-stay" onclick="parar()">PARAR</div>
@@ -138,6 +124,12 @@
     db.on('value', (snapshot) => {
         const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
         
+        // Reset de interface quando as cartas somem
+        if ((!d.cEle || d.cEle.length === 0) && (!d.cEla || d.cEla.length === 0)) {
+            document.getElementById('modal-ganhou').style.display = 'none';
+            document.getElementById('modal-perdeu').style.display = 'none';
+        }
+
         document.getElementById('p-ele').innerText = d.pEle || 0;
         document.getElementById('p-ela').innerText = d.pEla || 0;
         if(d.avEle) document.getElementById('mini-ele').style.backgroundImage = `url('${d.avEle}')`;
@@ -156,21 +148,27 @@
             btns.classList.add('disabled');
         }
 
+        // LÓGICA DE CARTAS INDIVIDUAL - CORRIGIDA
         const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
         const area = document.getElementById('minhas-cartas');
         if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
 
         area.innerHTML = "";
-        let somaEu = minhas.reduce((a, b) => a + b, 0);
+        let somaEu = 0;
         minhas.forEach(n => {
+            somaEu += n;
             const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c);
         });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // LÓGICA DE VITÓRIA E GIFS
+        // VERIFICAÇÃO DE ESTOURO E 21
         if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu', `Você fez ${somaEu} e estourou!`);
+            exibirResultado('perdeu');
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
+        } else if(somaEu === 21 && !d.vitoriaProcessada && d.turno === meuID) {
+            // Se bater 21, ele ganha automaticamente
+            exibirResultado('ganhou');
+            processarVitoria(meuID);
         }
 
         if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
@@ -181,36 +179,20 @@
     function compararFinal(d) {
         let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
         let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let meuPlacar = meuID === 'Ele' ? sEle : sEla;
-        let outroPlacar = meuID === 'Ele' ? sEla : sEle;
-        
-        let vencedor = "";
-        if(sEle > 21) vencedor = "Ela";
-        else if(sEla > 21) vencedor = "Ele";
-        else if(sEle > sEla) vencedor = "Ele";
-        else if(sEla > sEle) vencedor = "Ela";
-        else vencedor = "Empate";
+        let v = sEle > sEla ? 'Ele' : (sEla > sEle ? 'Ela' : 'Empate');
 
-        if(vencedor === meuID) {
-            exibirResultado('ganhou', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
-        } else if(vencedor === "Empate") {
-            alert("EMPATE! " + sEle + " a " + sEla);
-        } else {
-            exibirResultado('perdeu', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
-        }
+        if(v === meuID) exibirResultado('ganhou');
+        else if(v === 'Empate') { alert("EMPATE!"); novoJogo(); }
+        else exibirResultado('perdeu');
         
-        if(vencedor !== "Empate") processarVitoria(vencedor);
+        if(v !== "Empate") processarVitoria(v);
     }
 
-    function exibirResultado(tipo, texto) {
+    function exibirResultado(tipo) {
         if(tipo === 'ganhou') {
-            sWin.currentTime = 0; sWin.play();
-            document.getElementById('info-ganhou').innerText = texto;
-            document.getElementById('modal-ganhou').style.display = 'flex';
+            sWin.play(); document.getElementById('modal-ganhou').style.display = 'flex';
         } else {
-            sBoom.currentTime = 0; sBoom.play();
-            document.getElementById('info-perdeu').innerText = texto;
-            document.getElementById('modal-perdeu').style.display = 'flex';
+            sBoom.play(); document.getElementById('modal-perdeu').style.display = 'flex';
         }
     }
 
@@ -237,8 +219,6 @@
     }
 
     function novoJogo() {
-        document.getElementById('modal-ganhou').style.display = 'none';
-        document.getElementById('modal-perdeu').style.display = 'none';
         db.update({ cEle: [], cEla: [], parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' });
     }
 </script>
