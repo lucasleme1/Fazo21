@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Duelo - Victory Update</title>
+    <title>Blackjack Arena - Winner Update</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: white; }
         
-        /* TELAS DE ALERTA (VITÓRIA E DERROTA) */
-        .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .modal-alerta img { width: 250px; border-radius: 20px; margin-bottom: 15px; }
+        .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .modal-alerta img { width: 280px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
 
         #mesa { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #155d2c 0%, #0a2d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 8px solid #2c1e14; box-sizing: border-box; position: relative; }
 
@@ -20,7 +19,7 @@
         .mini-av { width: 45px; height: 45px; border-radius: 50%; border: 2px solid gold; background-size: cover; }
 
         .turn-indicator { padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid #555; }
-        .active-turn { background: #ffcc00; color: #000; border-color: #fff; box-shadow: 0 0 10px #ffcc00; }
+        .active-turn { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
 
         .avatar-main { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.4); background-size: cover; background-color: #222; }
         .hand { display: flex; gap: -45px; min-height: 110px; padding-left: 45px; }
@@ -48,16 +47,16 @@
 
 <div id="modal-perdeu" class="modal-alerta">
     <img src="https://files.catbox.moe/2hwdjc.gif">
-    <h2 style="color: #ff4444;">ESTOUROU!</h2>
+    <h2 style="color: #ff4444;">BOOM! ESTOUROU!</h2>
     <p id="info-perdeu"></p>
-    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">TENTAR DE NOVO</button>
+    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">NOVA CHANCE</button>
 </div>
 
 <div id="modal-ganhou" class="modal-alerta">
-    <img src="https://files.catbox.moe/xkxzyl.webp">
-    <h2 style="color: #ffcc00;">VOCÊ GANHOU!</h2>
+    <img src="https://files.catbox.moe/39b2od.gif">
+    <h2 style="color: #ffcc00;">VOCÊ É O CAMPEÃO!</h2>
     <p id="info-ganhou"></p>
-    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">PRÓXIMA PARTIDA</button>
+    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">JOGAR NOVAMENTE</button>
 </div>
 
 <div id="overlay">
@@ -67,7 +66,7 @@
         <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
         <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none;">ELA</button>
     </div>
-    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">JOGAR</button>
+    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">ENTRAR</button>
 </div>
 
 <div id="mesa">
@@ -86,7 +85,7 @@
     <div class="avatar-main" id="oponente-img"></div>
     
     <div style="display: flex; flex-direction: column; align-items: center;">
-        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px;">Soma: 0</div>
+        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px; font-size: 1.2rem;">Soma: 0</div>
         <div class="hand" id="minhas-cartas"></div>
         <div class="avatar-main" id="meu-avatar-img"></div>
     </div>
@@ -100,7 +99,7 @@
 <script>
     const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("blackjack_final_v11");
+    const db = firebase.database().ref("blackjack_final_v12");
 
     let meuID = "", meuAvUrl = "";
     const sCard = document.getElementById('snd-card');
@@ -157,22 +156,30 @@
         }
 
         const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
+        const oponenteCartas = meuID === "Ele" ? (d.cEla || []) : (d.cEle || []);
+        
         const area = document.getElementById('minhas-cartas');
         if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
 
         area.innerHTML = "";
         let somaEu = minhas.reduce((a, b) => a + b, 0);
+        let somaOp = oponenteCartas.reduce((a, b) => a + b, 0);
+        
         minhas.forEach(n => {
             const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c);
         });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // LÓGICA DE VITÓRIA E GIFS
+        // VERIFICAÇÃO DE ESTOURO (TEMPO REAL)
         if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu', `Você fez ${somaEu} e estourou!`);
+            exibirResultado('perdeu', `Você estourou com ${somaEu}!`);
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
+        } else if (somaOp > 21 && !d.vitoriaProcessada) {
+            exibirResultado('ganhou', `O oponente estourou! Você venceu.`);
+            processarVitoria(meuID);
         }
 
+        // COMPARAÇÃO FINAL QUANDO AMBOS PARAM
         if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
             compararFinal(d);
         }
@@ -181,8 +188,8 @@
     function compararFinal(d) {
         let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
         let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let meuPlacar = meuID === 'Ele' ? sEle : sEla;
-        let outroPlacar = meuID === 'Ele' ? sEla : sEle;
+        let meuTotal = meuID === 'Ele' ? sEle : sEla;
+        let opTotal = meuID === 'Ele' ? sEla : sEle;
         
         let vencedor = "";
         if(sEle > 21) vencedor = "Ela";
@@ -192,11 +199,12 @@
         else vencedor = "Empate";
 
         if(vencedor === meuID) {
-            exibirResultado('ganhou', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
+            exibirResultado('ganhou', `Você: ${meuTotal} | Oponente: ${opTotal}`);
         } else if(vencedor === "Empate") {
-            alert("EMPATE! " + sEle + " a " + sEla);
+            alert("EMPATE TÉCNICO!");
+            novoJogo();
         } else {
-            exibirResultado('perdeu', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
+            exibirResultado('perdeu', `Você: ${meuTotal} | Oponente: ${opTotal}`);
         }
         
         if(vencedor !== "Empate") processarVitoria(vencedor);
