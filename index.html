@@ -3,272 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Premium Fixed</title>
+    <title>Tic-Tac-Toe Master Neon</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --gold: #ffcc00; --blue: #00d4ff; --pink: #ff007f; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; background: #050a05; color: white; }
+        /* Estilo Dark e Moderno */
+        body { 
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
+            color: white; 
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
 
-        /* TELA DE INÍCIO - CORRIGIDA */
-        #overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 2000; 
+        /* Tela de Seleção Estilizada */
+        #tela-selecao { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(15, 15, 26, 0.98); 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            padding: 20px; overflow-y: auto;
+            z-index: 100; 
         }
-        .avatar-grid { 
-            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; 
-            margin: 20px 0; max-width: 300px;
+        .btn-escolha { 
+            width: 80%; padding: 22px; margin: 12px; border-radius: 20px; 
+            border: none; font-size: 1.3rem; font-weight: 800; cursor: pointer;
+            transition: 0.3s; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
-        .avatar-opt { 
-            width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; 
-            background-color: #222; background-size: cover; cursor: pointer;
-        }
-        .avatar-opt.selected { border-color: var(--gold); box-shadow: 0 0 10px var(--gold); transform: scale(1.1); }
+        .btn-ele { background: #ff9f0a; color: white; box-shadow: 0 0 20px rgba(255, 159, 10, 0.4); }
+        .btn-ela { background: #00ff88; color: #0f0f1a; box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
 
-        /* MESA DE JOGO */
-        #mesa { 
-            width: 100%; height: 100%; background: radial-gradient(circle at center, #1a4a2e 0%, #05150a 100%); 
-            display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
-            padding: 10px;
+        /* Placar Neon */
+        .placar { 
+            display: flex; justify-content: space-around; width: 90%; 
+            margin-bottom: 25px; background: rgba(255, 255, 255, 0.05); 
+            padding: 20px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .pontos { text-align: center; }
+        .pontos span { display: block; font-size: 0.7rem; color: #888; letter-spacing: 2px; margin-bottom: 5px; }
+        .pontos b { font-size: 2.5rem; display: block; text-shadow: 0 0 10px currentColor; }
+        #pontoEle { color: #ff9f0a; }
+        #pontoEla { color: #00ff88; }
+
+        .status { 
+            margin-bottom: 20px; height: 20px; color: #ff9f0a; 
+            font-family: monospace; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 1px; text-shadow: 0 0 5px #ff9f0a;
         }
 
-        .scoreboard { 
-            display: flex; justify-content: space-between; width: 100%; max-width: 400px;
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); 
-            padding: 10px 20px; border-radius: 15px; margin-top: 5px;
-        }
-        .score-val { font-size: 1.5rem; color: var(--gold); font-weight: bold; }
-        
-        .turn-indicator { padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; border: 1px solid #444; }
-        .active-turn { background: var(--gold); color: #000; box-shadow: 0 0 15px var(--gold); }
-
-        /* ÁREA DE CARTAS */
-        .hand { display: flex; justify-content: center; padding-left: 40px; min-height: 120px; align-items: center; }
-        .card { 
-            width: 70px; height: 100px; background: white; border-radius: 8px; 
+        /* Tabuleiro Master */
+        .board { display: grid; grid-template-columns: repeat(3, 95px); gap: 15px; }
+        .cell { 
+            width: 95px; height: 95px; background: rgba(255, 255, 255, 0.03); 
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: 1.5rem; font-weight: bold; color: #000; 
-            margin-left: -40px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
-            animation: deal 0.3s ease-out;
+            font-size: 3rem; font-weight: 900; cursor: pointer;
+            transition: 0.2s;
         }
-        @keyframes deal { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .cell:active { transform: scale(0.9); }
+        .cell.x { color: #ff9f0a; text-shadow: 0 0 15px #ff9f0a; }
+        .cell.o { color: #00ff88; text-shadow: 0 0 15px #00ff88; }
 
-        .avatar-main { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.2); background-size: cover; background-color: #222; }
-
-        /* BOTÕES */
-        .controls { display: flex; gap: 30px; padding-bottom: 30px; }
-        .btn-game { 
-            width: 70px; height: 70px; border-radius: 50%; border: none; 
-            font-weight: bold; color: white; cursor: pointer; font-size: 0.7rem;
+        /* Botões de Controle */
+        .controls { display: flex; gap: 15px; margin-top: 35px; width: 90%; }
+        button.action { 
+            flex: 1; padding: 15px; border-radius: 15px; border: none; 
+            font-weight: bold; font-size: 0.9rem; cursor: pointer; transition: 0.3s;
         }
-        .btn-hit { background: var(--blue); box-shadow: 0 4px 10px rgba(0,212,255,0.4); }
-        .btn-stay { background: var(--pink); box-shadow: 0 4px 10px rgba(255,0,127,0.4); }
-        .disabled { opacity: 0.2; pointer-events: none; }
-
-        /* MODAIS */
-        .modal-alerta { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; 
-            display: none; flex-direction: column; align-items: center; justify-content: center; 
-            text-align: center; padding: 20px;
-        }
-        .modal-alerta img { width: 250px; border-radius: 20px; margin-bottom: 20px; }
+        .btn-reset { background: #ff9f0a; color: white; }
+        .btn-clear { background: rgba(255,255,255,0.1); color: #ccc; }
     </style>
 </head>
 <body>
 
-<audio id="snd-card" src="https://files.catbox.moe/n9jekp.m4a"></audio>
-<audio id="snd-boom" src="https://files.catbox.moe/vydo44.mp3"></audio>
-<audio id="snd-win" src="https://files.catbox.moe/p6x15o.mp3"></audio>
-
-<div id="modal-ganhou" class="modal-alerta">
-    <img src="https://files.catbox.moe/xkxzyl.webp">
-    <h2 style="color:var(--gold)">VITÓRIA!</h2>
-    <p id="msg-ganhou"></p>
-    <button onclick="novoJogo()" style="padding:15px 30px; border-radius:10px; border:none; background:var(--gold); font-weight:bold;">NOVA PARTIDA</button>
-</div>
-
-<div id="modal-perdeu" class="modal-alerta">
-    <img id="img-perdeu" src="https://files.catbox.moe/2hwdjc.gif">
-    <h2 id="titulo-perdeu" style="color: #ff4444;">ESTOUROU!</h2>
-    <p id="msg-perdeu"></p>
-    <button onclick="novoJogo()" style="padding:15px 30px; border-radius:10px; border:none; background:white; font-weight:bold;">REVANCHE</button>
-</div>
-
-<div id="overlay">
-    <h1 style="color:var(--gold)">BLACKJACK DUO</h1>
-    <p>Escolha seu Avatar:</p>
-    <div class="avatar-grid" id="avatarGrid"></div>
-    <div style="display:flex; gap:10px; margin-bottom:20px;">
-        <button id="btnEle" onclick="setRole('Ele')" style="padding:10px 20px; background:var(--blue); color:white; border:none; border-radius:5px;">ELE</button>
-        <button id="btnEla" onclick="setRole('Ela')" style="padding:10px 20px; background:var(--pink); color:white; border:none; border-radius:5px;">ELA</button>
-    </div>
-    <button id="btnStart" style="display:none; padding:15px 40px; background:var(--gold); border:none; border-radius:30px; font-weight:bold; font-size:1.2rem; cursor:pointer;" onclick="entrar()">JOGAR</button>
-    <button onclick="resetGeral()" style="margin-top:40px; background:none; border:1px solid #333; color:#555; font-size:0.6rem;">LIMPAR TUDO</button>
-</div>
-
-<div id="mesa">
-    <div class="scoreboard">
-        <div style="text-align:center;">
-            <div id="mini-ele" style="width:40px; height:40px; border-radius:50%; background-size:cover; border:2px solid var(--blue)"></div>
-            <span id="p-ele" class="score-val">0</span>
-        </div>
-        <div id="indicador-turno" class="turn-indicator">AGUARDANDO</div>
-        <div style="text-align:center;">
-            <div id="mini-ela" style="width:40px; height:40px; border-radius:50%; background-size:cover; border:2px solid var(--pink)"></div>
-            <span id="p-ela" class="score-val">0</span>
-        </div>
+    <div id="tela-selecao">
+        <h1 style="margin-bottom: 30px; letter-spacing: 3px;">MASTER EDITION</h1>
+        <button class="btn-escolha btn-ele" onclick="selecionarJogador('X')">SOU ELE (X)</button>
+        <button class="btn-escolha btn-ela" onclick="selecionarJogador('O')">SOU ELA (O)</button>
+        <p style="color: #555; margin-top: 20px;">Cada um deve escolher um lado</p>
     </div>
 
-    <div class="avatar-main" id="oponente-img" style="opacity:0.5; transform:scale(0.8)"></div>
-
-    <div style="text-align:center; width:100%;">
-        <div id="soma-label" style="color:var(--gold); font-weight:bold; margin-bottom:10px; font-size:1.2rem;">Soma: 0</div>
-        <div class="hand" id="minhas-cartas"></div>
-        <div class="avatar-main" id="meu-avatar-img" style="margin: 0 auto;"></div>
+    <div class="placar">
+        <div class="pontos"><span>ELE</span><b id="pontoEle">0</b></div>
+        <div style="font-size: 1.2rem; color: #333; align-self: center; font-weight: 900;">VS</div>
+        <div class="pontos"><span>ELA</span><b id="pontoEla">0</b></div>
     </div>
 
-    <div class="controls" id="botoes-jogo">
-        <button class="btn-game btn-hit" onclick="comprar()">PEDIR</button>
-        <button class="btn-game btn-stay" onclick="parar()">PARAR</button>
+    <div class="status" id="status">Aguardando...</div>
+
+    <div class="board" id="board">
+        <div class="cell" onclick="jogar(0)"></div>
+        <div class="cell" onclick="jogar(1)"></div>
+        <div class="cell" onclick="jogar(2)"></div>
+        <div class="cell" onclick="jogar(3)"></div>
+        <div class="cell" onclick="jogar(4)"></div>
+        <div class="cell" onclick="jogar(5)"></div>
+        <div class="cell" onclick="jogar(6)"></div>
+        <div class="cell" onclick="jogar(7)"></div>
+        <div class="cell" onclick="jogar(8)"></div>
     </div>
-</div>
 
-<script>
-    const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("blackjack_final_v11");
+    <div class="controls">
+        <button class="action btn-reset" onclick="novoJogo()">PRÓXIMO ROUND</button>
+        <button class="action btn-clear" onclick="zerarTudo()">REINICIAR TUDO</button>
+    </div>
 
-    let meuID = "", meuAvUrl = "";
-    const sCard = document.getElementById('snd-card'), sBoom = document.getElementById('snd-boom'), sWin = document.getElementById('snd-win');
+    <script>
+        const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref("partida_v3_neon");
 
-    // Carregar Avatares
-    for(let i=1; i<=10; i++){
-        const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${i+10}`;
-        const div = document.createElement('div');
-        div.className = "avatar-opt";
-        div.style.backgroundImage = `url('${url}')`;
-        div.onclick = () => {
-            document.querySelectorAll('.avatar-opt').forEach(e => e.classList.remove('selected'));
-            div.classList.add('selected');
-            meuAvUrl = url;
-            checkReady();
-        };
-        document.getElementById('avatarGrid').appendChild(div);
-    }
+        let meuSimbolo = "";
+        let celulas = document.querySelectorAll('.cell');
 
-    function setRole(r) {
-        meuID = r;
-        document.getElementById('btnEle').style.outline = r==='Ele'?'3px solid gold':'none';
-        document.getElementById('btnEla').style.outline = r==='Ela'?'3px solid gold':'none';
-        checkReady();
-    }
-
-    function checkReady() { if(meuID && meuAvUrl) document.getElementById('btnStart').style.display = 'block'; }
-
-    function entrar() {
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('meu-avatar-img').style.backgroundImage = `url('${meuAvUrl}')`;
-        db.update({ [meuID === 'Ele' ? 'avEle' : 'avEla']: meuAvUrl });
-        db.once('value', s => { if(!s.val() || !s.val().turno) db.update({ turno: 'Ele' }); });
-    }
-
-    db.on('value', (snapshot) => {
-        const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
-        
-        if ((!d.cEle || d.cEle.length === 0) && (!d.cEla || d.cEla.length === 0)) {
-            document.getElementById('modal-ganhou').style.display = 'none';
-            document.getElementById('modal-perdeu').style.display = 'none';
+        function selecionarJogador(s) {
+            meuSimbolo = s;
+            document.getElementById('tela-selecao').style.fadeOut = "0.5s";
+            setTimeout(() => document.getElementById('tela-selecao').style.display = 'none', 300);
         }
 
-        document.getElementById('p-ele').innerText = d.pEle || 0;
-        document.getElementById('p-ela').innerText = d.pEla || 0;
-        if(d.avEle) document.getElementById('mini-ele').style.backgroundImage = `url('${d.avEle}')`;
-        if(d.avEla) document.getElementById('mini-ela').style.backgroundImage = `url('${d.avEla}')`;
-        const imgOp = meuID === 'Ele' ? d.avEla : d.avEle;
-        if(imgOp) document.getElementById('oponente-img').style.backgroundImage = `url('${imgOp}')`;
-
-        const ind = document.getElementById('indicador-turno');
-        if(d.turno === meuID) {
-            ind.innerText = "SUA VEZ"; ind.className = "turn-indicator active-turn";
-            document.getElementById('botoes-jogo').classList.remove('disabled');
-        } else {
-            ind.innerText = "VEZ DE " + (d.turno || "ELE"); ind.className = "turn-indicator";
-            document.getElementById('botoes-jogo').classList.add('disabled');
-        }
-
-        const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
-        const area = document.getElementById('minhas-cartas');
-        if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
-
-        area.innerHTML = "";
-        let somaEu = 0;
-        minhas.forEach(n => { somaEu += n; const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c); });
-        document.getElementById('soma-label').innerText = "Soma: " + somaEu;
-
-        if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu', somaEu, 0, true);
-            processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
-        } else if(somaEu === 21 && !d.vitoriaProcessada && d.turno === meuID) {
-            exibirResultado('ganhou', 21, 0);
-            processarVitoria(meuID);
-        }
-
-        if(d.parouEle && d.parouEla && !d.vitoriaProcessada) compararFinal(d);
-    });
-
-    function compararFinal(d) {
-        let sEle = (d.cEle || []).reduce((a,b)=>a+b,0), sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let meuS = meuID === 'Ele' ? sEle : sEla, opS = meuID === 'Ele' ? sEla : sEle;
-        let v = (sEle > 21) ? 'Ela' : (sEla > 21) ? 'Ele' : (sEle > sEla) ? 'Ele' : (sEla > sEle) ? 'Ela' : 'Empate';
-
-        if(v === meuID) exibirResultado('ganhou', meuS, opS);
-        else if(v === 'Empate') { alert("EMPATE!"); novoJogo(); }
-        else exibirResultado('perdeu', meuS, opS, false);
-        if(v !== "Empate") processarVitoria(v);
-    }
-
-    function exibirResultado(tipo, meuS, opS, estourou) {
-        if(tipo === 'ganhou') {
-            sWin.play();
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            document.getElementById('msg-ganhou').innerText = `Você: ${meuS} x Oponente: ${opS}`;
-            document.getElementById('modal-ganhou').style.display = 'flex';
-        } else {
-            sBoom.play();
-            document.getElementById('titulo-perdeu').innerText = estourou ? "ESTOUROU!" : "VISH, PAROU CEDO!";
-            document.getElementById('msg-perdeu').innerText = `Você: ${meuS} x Oponente: ${opS}`;
-            document.getElementById('img-perdeu').style.display = estourou ? "block" : "none";
-            document.getElementById('modal-perdeu').style.display = 'flex';
-        }
-    }
-
-    function comprar() {
-        const n = Math.floor(Math.random() * 10) + 2;
-        db.once('value', s => {
-            let mao = meuID === 'Ele' ? (s.val().cEle || []) : (s.val().cEla || []);
-            mao.push(n);
-            db.update({ [meuID === 'Ele' ? 'cEle' : 'cEla']: mao });
+        db.on('value', (s) => {
+            const data = s.val() || { tabuleiro: ["","","","","","","","",""], vez: "X", ele: 0, ela: 0, fim: false };
+            data.tabuleiro.forEach((v, i) => {
+                celulas[i].innerText = v;
+                celulas[i].className = "cell " + (v ? v.toLowerCase() : "");
+            });
+            document.getElementById('pontoEle').innerText = data.ele;
+            document.getElementById('pontoEla').innerText = data.ela;
+            if (data.fim) {
+                const win = checarVitoria(data.tabuleiro);
+                statusEl(win ? "VITÓRIA DE " + (win === "X" ? "ELE!" : "ELA!") : "EMPATE!");
+            } else {
+                statusEl(data.vez === meuSimbolo ? "SUA VEZ" : "ESPERE...");
+            }
         });
-    }
 
-    function parar() {
-        const prox = meuID === 'Ele' ? 'Ela' : 'Ele';
-        db.update({ turno: prox, [meuID === 'Ele' ? 'parouEle' : 'parouEla']: true });
-    }
+        function jogar(i) {
+            if (meuSimbolo === "") return;
+            db.once('value', (s) => {
+                let data = s.val() || { tabuleiro: ["","","","","","","","",""], vez: "X", ele: 0, ela: 0, fim: false };
+                if (!data.fim && data.tabuleiro[i] === "" && data.vez === meuSimbolo) {
+                    data.tabuleiro[i] = meuSimbolo;
+                    data.vez = (meuSimbolo === "X") ? "O" : "X";
+                    const win = checarVitoria(data.tabuleiro);
+                    if (win) {
+                        data.fim = true;
+                        if (win === "X") data.ele++; else data.ela++;
+                    } else if (!data.tabuleiro.includes("")) data.fim = true;
+                    db.set(data);
+                }
+            });
+        }
 
-    function processarVitoria(v) {
-        db.once('value', s => {
-            if(s.val().vitoriaProcessada) return;
-            let f = v === 'Ele' ? 'pEle' : 'pEla';
-            db.update({ [f]: (s.val()[f] || 0) + 1, vitoriaProcessada: true });
-        });
-    }
+        function checarVitoria(t) {
+            const combos = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            for (let c of combos) if (t[c[0]] && t[c[0]] === t[c[1]] && t[c[1]] === t[c[2]]) return t[c[0]];
+            return null;
+        }
 
-    function novoJogo() { db.update({ cEle: [], cEla: [], parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' }); }
-    function resetGeral() { if(confirm("Zerar Arena?")) db.set({ cEle:[], cEla:[], pEle:0, pEla:0, parouEle:false, parouEla:false, vitoriaProcessada:false, turno:'Ele' }); }
-</script>
+        function novoJogo() { db.update({ tabuleiro: ["","","","","","","","",""], vez: "X", fim: false }); }
+        function zerarTudo() { db.set({ tabuleiro: ["","","","","","","","",""], vez: "X", ele: 0, ela: 0, fim: false }); }
+        function statusEl(t) { document.getElementById('status').innerText = t; }
+    </script>
 </body>
 </html>
