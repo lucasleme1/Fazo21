@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Duelo - Fixed & Stable</title>
+    <title>Blackjack Duelo - Zerado</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -25,6 +25,8 @@
         .btn-game { width: 75px; height: 75px; border-radius: 50%; border: 4px solid white; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-hit { background: #0066ff; }
         .btn-stay { background: #dd0000; }
+        
+        /* OVERLAY INICIAL */
         #overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px; }
         .avatar-opt { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background-size: cover; }
@@ -52,11 +54,15 @@
 <div id="overlay">
     <h2 style="color: gold">BLACKJACK DUO</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
-    <div style="display: flex; gap: 15px;">
-        <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
-        <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none;">ELA</button>
+    
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none; border-radius: 5px;">ELE</button>
+        <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none; border-radius: 5px;">ELA</button>
     </div>
-    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">JOGAR</button>
+
+    <button id="btnStart" style="padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px; margin-bottom: 10px;" onclick="entrar()">JOGAR</button>
+    
+    <button onclick="resetGeral()" style="background: none; border: 1px solid #444; color: #777; font-size: 0.7rem; padding: 5px 10px; border-radius: 5px;">LIMPAR BANCO DE DADOS (Zerar Tudo)</button>
 </div>
 
 <div id="mesa">
@@ -93,6 +99,7 @@
     const sBoom = document.getElementById('snd-boom');
     const sWin = document.getElementById('snd-win');
 
+    // SETUP AVATARES
     const seeds = ["Jack", "Milo", "Jasper", "Leo", "Oliver", "Aneka", "Luna", "Zoe", "Sasha", "Mia"];
     seeds.forEach(s => {
         const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}`;
@@ -114,6 +121,17 @@
         if(meuAvUrl) document.getElementById('btnStart').style.display = 'block';
     }
 
+    function resetGeral() {
+        if(confirm("Isso vai zerar o placar e as mãos de todos. Continuar?")) {
+            db.set({ 
+                cEle: [], cEla: [], pEle: 0, pEla: 0, 
+                parouEle: false, parouEla: false, 
+                vitoriaProcessada: false, turno: 'Ele' 
+            });
+            alert("Banco de dados resetado!");
+        }
+    }
+
     function entrar() {
         document.getElementById('overlay').style.display = 'none';
         document.getElementById('meu-avatar-img').style.backgroundImage = `url('${meuAvUrl}')`;
@@ -124,10 +142,12 @@
     db.on('value', (snapshot) => {
         const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
         
-        // Reset de interface quando as cartas somem
+        // Se as cartas sumirem, fecha os modais
         if ((!d.cEle || d.cEle.length === 0) && (!d.cEla || d.cEla.length === 0)) {
             document.getElementById('modal-ganhou').style.display = 'none';
             document.getElementById('modal-perdeu').style.display = 'none';
+            sWin.pause(); sWin.currentTime = 0;
+            sBoom.pause(); sBoom.currentTime = 0;
         }
 
         document.getElementById('p-ele').innerText = d.pEle || 0;
@@ -144,11 +164,10 @@
             ind.innerText = "SUA VEZ"; ind.className = "turn-indicator active-turn";
             btns.classList.remove('disabled');
         } else {
-            ind.innerText = "VEZ DE " + d.turno; ind.className = "turn-indicator";
+            ind.innerText = "VEZ DE " + (d.turno || "Ele"); ind.className = "turn-indicator";
             btns.classList.add('disabled');
         }
 
-        // LÓGICA DE CARTAS INDIVIDUAL - CORRIGIDA
         const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
         const area = document.getElementById('minhas-cartas');
         if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
@@ -161,12 +180,10 @@
         });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // VERIFICAÇÃO DE ESTOURO E 21
         if(somaEu > 21 && !d.vitoriaProcessada) {
             exibirResultado('perdeu');
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
         } else if(somaEu === 21 && !d.vitoriaProcessada && d.turno === meuID) {
-            // Se bater 21, ele ganha automaticamente
             exibirResultado('ganhou');
             processarVitoria(meuID);
         }
@@ -180,11 +197,9 @@
         let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
         let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
         let v = sEle > sEla ? 'Ele' : (sEla > sEle ? 'Ela' : 'Empate');
-
         if(v === meuID) exibirResultado('ganhou');
         else if(v === 'Empate') { alert("EMPATE!"); novoJogo(); }
         else exibirResultado('perdeu');
-        
         if(v !== "Empate") processarVitoria(v);
     }
 
