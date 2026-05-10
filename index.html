@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>21 Avatar Master - Sound Edition v2</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --blue: #00d2ff; --pink: #ff007f; --gold: #ffcc00; }
+        body { 
+            background: radial-gradient(circle, #111, #000); color: white; font-family: sans-serif; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            height: 100vh; margin: 0; overflow: hidden;
+        }
+
+        /* TELA DE SELEÇÃO E BIBLIOTECA */
+        #tela-id { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 100; padding-top: 50px;}
+        
+        .role-selector { display: flex; justify-content: center; gap: 20px; width: 90%; margin-bottom: 30px;}
+        .btn-sel { flex: 1; padding: 20px; border-radius: 15px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; text-align: center;}
+        
+        .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; width: 90%; margin-top: 20px; max-height: 50vh; overflow-y: auto;}
+        .avatar-option { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #444; background-size: cover; background-position: center; cursor: pointer; transition: 0.2s;}
+        .avatar-option.selected { border-color: var(--gold); box-shadow: 0 0 15px var(--gold);}
+
+        /* PLACAR TOPO */
+        .header { display: flex; justify-content: space-around; width: 100%; padding: 10px; background: #111; border-bottom: 2px solid #333; }
+        .score-box { text-align: center; }
+        .score-box b { font-size: 1.5rem; color: var(--gold); text-shadow: 0 0 5px var(--gold); }
+
+        /* ÁREA DE JOGO */
+        .arena { position: relative; width: 100%; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-around; }
+
+        /* AVATARES */
+        .player-area { display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
+        .avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #444; background-size: cover; background-position: center; box-shadow: 0 0 15px rgba(255,255,255,0.1); }
+        .ele .avatar { border-color: var(--blue); }
+        .ela .avatar { border-color: var(--pink); }
+        
+        /* MONTE MASTER (BARALHO 3D) */
+        .baralho-3d-container { perspective: 1000px; width: 80px; height: 110px; margin: 20px 0;}
+        .baralho-3d { 
+            width: 100%; height: 100%; background-image: url('https://img.freepik.com/fotos-gratis/baralho-de-cartas-de-baralho-empilhado-perto_1303-24151.jpg'); /* Exemplo imagem baralho */
+            background-size: cover; background-position: center; border-radius: 8px;
+            border: 2px solid var(--gold); box-shadow: 0 0 20px rgba(255,204,0,0.2); 
+            position: relative; transition: 0.3s;
+        }
+
+        /* CARTAS 3D E ANIMAÇÃO FLIP */
+        .cartas-container { display: flex; gap: -25px; margin-top: 10px; min-height: 120px; perspective: 1000px; position: relative;}
+        
+        .carta-flip {
+            width: 70px; height: 105px; border-radius: 8px; position: relative;
+            transform-style: preserve-3d; margin-left: -25px;
+            animation: flipIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .carta-face { width: 100%; height: 100%; border-radius: 8px; position: absolute; backface-visibility: hidden;}
+        .carta-front { 
+            background: white; color: black; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.8rem; font-weight: 900; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); transform: rotateY(0deg);
+        }
+        .carta-back { 
+            background: #222; border: 2px solid var(--gold); transform: rotateY(180deg);
+        }
+
+        @keyframes flipIn {
+            0% { transform: translate(-30vw, -30vh) rotateY(180deg) rotateZ(45deg) scale(0.5); opacity: 0; }
+            50% { transform: translate(-15vw, -15vh) rotateY(90deg) rotateZ(20deg) scale(0.7); opacity: 1; }
+            100% { transform: translate(0, 0) rotateY(0deg) rotateZ(-5deg) scale(1); opacity: 1; }
+        }
+
+        /* CONTROLES */
+        .controls { width: 100%; display: flex; justify-content: center; gap: 15px; padding: 25px; background: #000; }
+        .btn-action { flex: 1; max-width: 160px; padding: 18px; border-radius: 15px; border: none; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; }
+        .btn-hit { background: var(--blue); box-shadow: 0 5px 0 #0088aa; }
+        .btn-hit:active { transform: translateY(3px); box-shadow: 0 2px 0 #0088aa; }
+        .btn-stay { background: #222; border: 1px solid #444; }
+
+    </style>
+</head>
+<body>
+
+    <audio id="som-carta" src="https://www.soundjay.com/misc/sounds/card-flip-1.mp3"></audio>
+    <audio id="som-win" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+    <audio id="som-lose" src="https://www.soundjay.com/misc/sounds/fail-trumpet-01.mp3"></audio>
+
+    <div id="tela-id">
+        <h1 style="color: var(--gold); letter-spacing: 3px; margin-bottom: 40px;">21 MASTER SOUND v2</h1>
+        
+        <div class="role-selector">
+            <button id="btn-sel-ele" class="btn-sel" style="background:var(--blue); color:white" onclick="selecionarPapel('Ele')">SOU ELE</button>
+            <button id="btn-sel-ela" class="btn-sel" style="background:var(--pink); color:white" onclick="selecionarPapel('Ela')">SOU ELA</button>
+        </div>
+
+        <p style="color: var(--gold); font-size: 1rem; margin-top: 10px;">Escolha seu Avatar:</p>
+        <div class="avatar-grid" id="biblioteca-avatares">
+            </div>
+    </div>
+
+    <div class="header">
+        <div class="score-box">ELE<br><b id="v-ele">0</b></div>
+        <div class="score-box" id="status-geral">JOGANDO</div>
+        <div class="score-box">ELA<br><b id="v-ela">0</b></div>
+    </div>
+
+    <div class="arena">
+        <div id="area-oponente" class="player-area">
+            <div class="avatar" id="av-oponente"></div>
+            <div style="font-size: 0.8rem; margin-top: 5px; color: #666;">OPONENTE</div>
+        </div>
+
+        <div class="baralho-3d-container">
+            <div class="baralho-3d" id="monte-master"></div>
+        </div>
+
+        <div id="area-voce" class="player-area">
+            <div id="minhas-cartas" class="cartas-container"></div>
+            <div class="avatar" id="av-voce"></div>
+            <div style="margin-top:8px; font-weight: bold;">Soma: <span id="minha-soma" style="color:var(--gold)">0</span></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btnHit" class="btn-action btn-hit" onclick="comprar()">PEDIR CARTA</button>
+        <button class="btn-action btn-stay" onclick="novoRound()">NOVO ROUND</button>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref("jogo_21_master_som_v2");
+
+        let meuID = "";
+        let meuAvatarUrl = "";
+        
+        // --- 1. BIBLIOTECA DE AVATARES ---
+        // Você pode substituir esses links por links diretos para suas imagens (ex: GitHub)
+        const biblioteca = [
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Bella",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Daisy",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Elias",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Fiona",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Gabriel",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Hazel",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Isaac",
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=Jasmine"
+        ];
+
+        // Gerar a biblioteca na tela
+        const gridAvatares = document.getElementById('biblioteca-avatares');
+        biblioteca.forEach((url, index) => {
+            const opt = document.createElement('div');
+            opt.className = "avatar-option";
+            opt.style.backgroundImage = `url('${url}')`;
+            opt.onclick = () => selecionarAvatar(url, index);
+            gridAvatares.appendChild(opt);
+        });
+
+        function selecionarPapel(id) {
+            meuID = id;
+            document.getElementById('btn-sel-ele').style.border = meuID === 'Ele' ? '3px solid white' : 'none';
+            document.getElementById('btn-sel-ela').style.border = meuID === 'Ela' ? '3px solid white' : 'none';
+        }
+
+        function selecionarAvatar(url, index) {
+            meuAvatarUrl = url;
+            // Destaca a seleção na biblioteca
+            const opcoes = document.querySelectorAll('.avatar-option');
+            opcoes.forEach(o => o.classList.remove('selected'));
+            opcoes[index].classList.add('selected');
+        }
+
+        // Função para finalizar a entrada no jogo
+        document.body.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && meuID && meuAvatarUrl) {
+                document.getElementById('tela-id').style.display = 'none';
+                
+                const areaVoce = document.getElementById('area-voce');
+                const areaOponente = document.getElementById('area-oponente');
+                const avVoceImg = document.getElementById('av-voce');
+
+                avVoceImg.style.backgroundImage = `url('${meuAvatarUrl}')`;
+                
+                if(meuID === "Ele") {
+                    areaVoce.classList.add('ele');
+                    areaOponente.classList.add('ela');
+                } else {
+                    areaVoce.classList.add('ela');
+                    areaOponente.classList.add('ele');
+                }
+                
+                // Salvar meu avatar no Firebase para o oponente ver
+                if (meuID === 'Ele') db.update({ avatarEle: meuAvatarUrl });
+                else db.update({ avatarEla: meuAvatarUrl });
+            }
+        });
+
+        // --- Resto do Código do Jogo (adaptado da v1) ---
+
+        function playSound(id) {
+            const s = document.getElementById(id);
+            s.currentTime = 0;
+            s.play().catch(e => console.log("Áudio bloqueado"));
+        }
+
+        db.on('value', (s) => {
+            const data = s.val() || { cEle: [], cEla: [], vEle: 0, vEla: 0, avatarEle: '', avatarEla: '' };
+            
+            document.getElementById('v-ele').innerText = data.vEle;
+            document.getElementById('v-ela').innerText = data.vEla;
+
+            // Mostrar avatar do oponente
+            const avOponenteImg = document.getElementById('av-oponente');
+            const urlOponente = meuID === 'Ele' ? data.avatarEla : data.avatarEle;
+            if (urlOponente) avOponenteImg.style.backgroundImage = `url('${urlOponente}')`;
+
+            const minhas = meuID === "Ele" ? (data.cEle || []) : (data.cEla || []);
+            const areaMesa = document.getElementById('minhas-cartas');
+            
+            // Se o número de cartas aumentou, toca o som de carta
+            if (minhas.length > areaMesa.children.length) {
+                playSound('som-carta');
+            }
+
+            areaMesa.innerHTML = "";
+            let soma = 0;
+            minhas.forEach(num => {
+                // Estrutura Flip
+                const flip = document.createElement('div');
+                flip.className = "carta-flip";
+                
+                const front = document.createElement('div');
+                front.className = "carta-face carta-front";
+                front.innerText = num;
+                
+                const back = document.createElement('div');
+                back.className = "carta-face carta-back";
+                
+                flip.appendChild(front);
+                flip.appendChild(back);
+                areaMesa.appendChild(flip);
+                
+                soma += num;
+            });
+
+            document.getElementById('minha-soma').innerText = soma;
+
+            if (soma > 21) {
+                document.getElementById('status-geral').innerHTML = "<span style='color:#ff3131'>ESTOUROU!</span>";
+                document.getElementById('btnHit').disabled = true;
+                if (!window.losePlayed) { playSound('som-lose'); window.losePlayed = true; }
+            } else if (soma === 21) {
+                document.getElementById('status-geral').innerHTML = "<span class='vitoria-msg'>21 MASTER!</span>";
+                if (!window.winPlayed) { playSound('som-win'); window.winPlayed = true; }
+            }
+        });
+
+        function comprar() {
+            if (!meuID || !meuAvatarUrl) return; // Garante que escolheu avatar
+            
+            const nova = Math.floor(Math.random() * 10) + 2;
+
+            db.once('value', (s) => {
+                let data = s.val() || { cEle: [], cEla: [], vEle: 0, vEla: 0 };
+                if (meuID === "Ele") {
+                    if(!data.cEle) data.cEle = [];
+                    data.cEle.push(nova);
+                    if(somar(data.cEle) > 21) data.vEla++;
+                } else {
+                    if(!data.cEla) data.cEla = [];
+                    data.cEla.push(nova);
+                    if(somar(data.cEla) > 21) data.vEle++;
+                }
+                db.set(data);
+            });
+        }
+
+        function somar(arr) { return arr.reduce((a, b) => a + b, 0); }
+        
+        function novoRound() {
+            window.winPlayed = false;
+            window.losePlayed = false;
+            db.update({ cEle: [], cEla: [] });
+            document.getElementById('btnHit').disabled = false;
+            document.getElementById('status-geral').innerText = "JOGANDO";
+        }
+    </script>
+</body>
+</html>
