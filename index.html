@@ -3,92 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Duelo - Avatares Reais</title>
+    <title>Blackjack Duelo - Victory Update</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: white; }
         
-        /* TELA DE EXPLOSÃO */
-        #tela-explosao { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        #tela-explosao img { width: 250px; border-radius: 20px; }
+        /* TELAS DE ALERTA (VITÓRIA E DERROTA) */
+        .modal-alerta { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .modal-alerta img { width: 250px; border-radius: 20px; margin-bottom: 15px; }
 
-        /* MESA */
         #mesa { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #155d2c 0%, #0a2d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 8px solid #2c1e14; box-sizing: border-box; position: relative; }
 
-        /* PLACAR E AVATARES NA MESA */
-        .scoreboard { display: flex; justify-content: space-between; width: 90%; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 15px; border: 1px solid #333; margin-top: 10px; z-index: 10; align-items: center;}
-        .score-val { display: block; font-size: 1.2rem; color: #ffcc00; font-weight: bold; }
-        .mini-av { width: 40px; height: 40px; border-radius: 50%; border: 2px solid gold; background-size: cover; margin-bottom: 5px; }
+        .scoreboard { display: flex; justify-content: space-between; width: 95%; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; border: 1px solid #444; margin-top: 10px; align-items: center; }
+        .score-val { display: block; font-size: 1.5rem; color: #ffcc00; font-weight: bold; }
+        .mini-av { width: 45px; height: 45px; border-radius: 50%; border: 2px solid gold; background-size: cover; }
 
-        .turn-indicator { padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
-        .active-turn { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
+        .turn-indicator { padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid #555; }
+        .active-turn { background: #ffcc00; color: #000; border-color: #fff; box-shadow: 0 0 10px #ffcc00; }
 
-        .avatar-main { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); background-size: cover; background-color: #222; }
-
-        /* CARTAS */
+        .avatar-main { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.4); background-size: cover; background-color: #222; }
         .hand { display: flex; gap: -45px; min-height: 110px; padding-left: 45px; }
         .card { width: 75px; height: 105px; background: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: black; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); margin-left: -45px; animation: dealCard 0.4s ease-out forwards; }
         
         @keyframes dealCard { from { transform: translate(150px, -150px) rotate(30deg); opacity: 0; } to { transform: translate(0, 0) rotate(0deg); opacity: 1; } }
 
-        /* CONTROLES */
         .controls { width: 100%; display: flex; justify-content: space-evenly; padding-bottom: 25px; }
         .disabled { opacity: 0.2; pointer-events: none; filter: grayscale(1); }
-        .btn-game { width: 75px; height: 75px; border-radius: 50%; border: 4px solid white; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; text-shadow: 1px 1px 2px #000; }
+        .btn-game { width: 75px; height: 75px; border-radius: 50%; border: 4px solid white; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-hit { background: #0066ff; }
         .btn-stay { background: #dd0000; }
         
-        /* SELEÇÃO INICIAL */
-        #overlay { position: fixed; inset: 0; background: #111; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 20px 0; }
-        .avatar-opt { width: 55px; height: 55px; border-radius: 50%; border: 2px solid #444; background-size: cover; transition: 0.2s; }
-        .selected { border-color: gold; box-shadow: 0 0 15px gold; transform: scale(1.1); }
+        #overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px; }
+        .avatar-opt { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background-size: cover; }
+        .selected { border-color: gold; transform: scale(1.1); box-shadow: 0 0 10px gold; }
     </style>
 </head>
 <body>
 
 <audio id="snd-card" preload="auto" src="https://files.catbox.moe/n9jekp.m4a"></audio>
 <audio id="snd-boom" preload="auto" src="https://files.catbox.moe/vydo44.mp3"></audio>
+<audio id="snd-win" preload="auto" src="https://files.catbox.moe/p6x15o.mp3"></audio>
 
-<div id="tela-explosao">
+<div id="modal-perdeu" class="modal-alerta">
     <img src="https://files.catbox.moe/2hwdjc.gif">
-    <h2 id="msg-final" style="color: white; margin: 15px;"></h2>
-    <button style="padding: 15px 40px; background: gold; border: none; border-radius: 30px; font-weight: bold; font-size: 1.1rem;" onclick="novoJogo()">PRÓXIMA RODADA</button>
+    <h2 style="color: #ff4444;">ESTOUROU!</h2>
+    <p id="info-perdeu"></p>
+    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">TENTAR DE NOVO</button>
+</div>
+
+<div id="modal-ganhou" class="modal-alerta">
+    <img src="https://files.catbox.moe/xkxzyl.webp">
+    <h2 style="color: #ffcc00;">VOCÊ GANHOU!</h2>
+    <p id="info-ganhou"></p>
+    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">PRÓXIMA PARTIDA</button>
 </div>
 
 <div id="overlay">
-    <h2 style="color: gold; margin-bottom: 5px;">ESCOLHA SEU VISUAL</h2>
+    <h2 style="color: gold">BLACKJACK ARENA</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
-    
-    <p>QUEM É VOCÊ?</p>
-    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-        <button onclick="setRole('Ele')" id="bEle" style="padding: 12px 30px; background: #0066ff; border: none; color: white; border-radius: 8px; font-weight: bold;">ELE</button>
-        <button onclick="setRole('Ela')" id="bEla" style="padding: 12px 30px; background: #ff007f; border: none; color: white; border-radius: 8px; font-weight: bold;">ELA</button>
+    <div style="display: flex; gap: 15px;">
+        <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
+        <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none;">ELA</button>
     </div>
-    
-    <button id="btnStart" style="padding: 18px 50px; background: gold; border: none; display: none; font-weight: bold; border-radius: 50px; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(255,204,0,0.4);" onclick="entrar()">ENTRAR NA MESA</button>
+    <button id="btnStart" style="margin-top: 20px; padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px;" onclick="entrar()">JOGAR</button>
 </div>
 
 <div id="mesa">
     <div class="scoreboard">
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div id="av-mini-ele" class="mini-av" style="background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Jack')"></div>
-            <div>ELE <span id="p-ele" class="score-val">0</span></div>
+        <div style="text-align: center;">
+            <div id="mini-ele" class="mini-av"></div>
+            <span id="p-ele" class="score-val">0</span>
         </div>
-
-        <div id="indicador-turno" class="turn-indicator">CARREGANDO...</div>
-
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div id="av-mini-ela" class="mini-av" style="background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka')"></div>
-            <div>ELA <span id="p-ela" class="score-val">0</span></div>
+        <div id="indicador-turno" class="turn-indicator">AGUARDANDO</div>
+        <div style="text-align: center;">
+            <div id="mini-ela" class="mini-av"></div>
+            <span id="p-ela" class="score-val">0</span>
         </div>
     </div>
 
     <div class="avatar-main" id="oponente-img"></div>
     
     <div style="display: flex; flex-direction: column; align-items: center;">
-        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 8px; font-size: 1.1rem; text-shadow: 1px 1px #000;">Sua Soma: 0</div>
+        <div id="soma-label" style="font-weight: bold; color: #ffcc00; margin-bottom: 5px;">Soma: 0</div>
         <div class="hand" id="minhas-cartas"></div>
         <div class="avatar-main" id="meu-avatar-img"></div>
     </div>
@@ -100,22 +98,20 @@
 </div>
 
 <script>
-    // CONFIGURAÇÃO FIREBASE
     const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("blackjack_final_multiplayer");
+    const db = firebase.database().ref("blackjack_final_v11");
 
     let meuID = "", meuAvUrl = "";
     const sCard = document.getElementById('snd-card');
     const sBoom = document.getElementById('snd-boom');
+    const sWin = document.getElementById('snd-win');
 
-    // GERAR 10 AVATARES DIFERENTES (5 Masc / 5 Fem aprox.)
     const seeds = ["Jack", "Milo", "Jasper", "Leo", "Oliver", "Aneka", "Luna", "Zoe", "Sasha", "Mia"];
     seeds.forEach(s => {
         const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}`;
         const div = document.createElement('div');
-        div.className = "avatar-opt";
-        div.style.backgroundImage = `url('${url}')`;
+        div.className = "avatar-opt"; div.style.backgroundImage = `url('${url}')`;
         div.onclick = () => {
             meuAvUrl = url;
             document.querySelectorAll('.avatar-opt').forEach(el => el.classList.remove('selected'));
@@ -127,15 +123,14 @@
 
     function setRole(r) {
         meuID = r;
-        document.getElementById('bEle').style.boxShadow = r==='Ele'?'0 0 15px #0066ff':'none';
-        document.getElementById('bEla').style.boxShadow = r==='Ela'?'0 0 15px #ff007f':'none';
+        document.getElementById('bEle').style.outline = r==='Ele'?'3px solid gold':'none';
+        document.getElementById('bEla').style.outline = r==='Ela'?'3px solid gold':'none';
         if(meuAvUrl) document.getElementById('btnStart').style.display = 'block';
     }
 
     function entrar() {
         document.getElementById('overlay').style.display = 'none';
         document.getElementById('meu-avatar-img').style.backgroundImage = `url('${meuAvUrl}')`;
-        // Salva o avatar escolhido no Firebase
         db.update({ [meuID === 'Ele' ? 'avEle' : 'avEla']: meuAvUrl });
         db.once('value', s => { if(!s.val() || !s.val().turno) db.update({ turno: 'Ele' }); });
     }
@@ -143,31 +138,24 @@
     db.on('value', (snapshot) => {
         const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
         
-        // Atualiza os Avatares na tela (O seu e o dela)
-        if(d.avEle) document.getElementById('av-mini-ele').style.backgroundImage = `url('${d.avEle}')`;
-        if(d.avEla) document.getElementById('av-mini-ela').style.backgroundImage = `url('${d.avEla}')`;
-        
-        const imgOponente = meuID === 'Ele' ? d.avEla : d.avEle;
-        if(imgOponente) document.getElementById('oponente-img').style.backgroundImage = `url('${imgOponente}')`;
-
-        // Placar
         document.getElementById('p-ele').innerText = d.pEle || 0;
         document.getElementById('p-ela').innerText = d.pEla || 0;
+        if(d.avEle) document.getElementById('mini-ele').style.backgroundImage = `url('${d.avEle}')`;
+        if(d.avEla) document.getElementById('mini-ela').style.backgroundImage = `url('${d.avEla}')`;
+        
+        const imgOp = meuID === 'Ele' ? d.avEla : d.avEle;
+        if(imgOp) document.getElementById('oponente-img').style.backgroundImage = `url('${imgOp}')`;
 
-        // Turno
         const ind = document.getElementById('indicador-turno');
         const btns = document.getElementById('botoes-jogo');
         if(d.turno === meuID) {
-            ind.innerText = "Sua Vez";
-            ind.className = "turn-indicator active-turn";
+            ind.innerText = "SUA VEZ"; ind.className = "turn-indicator active-turn";
             btns.classList.remove('disabled');
         } else {
-            ind.innerText = "Vez de " + d.turno;
-            ind.className = "turn-indicator";
+            ind.innerText = "VEZ DE " + d.turno; ind.className = "turn-indicator";
             btns.classList.add('disabled');
         }
 
-        // Cartas e Soma
         const minhas = meuID === "Ele" ? (d.cEle || []) : (d.cEla || []);
         const area = document.getElementById('minhas-cartas');
         if (minhas.length > area.children.length) { sCard.currentTime = 0; sCard.play(); }
@@ -177,26 +165,59 @@
         minhas.forEach(n => {
             const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c);
         });
-        document.getElementById('soma-label').innerText = "Sua Soma: " + somaEu;
+        document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // Regra de Estouro
+        // LÓGICA DE VITÓRIA E GIFS
         if(somaEu > 21 && !d.vitoriaProcessada) {
-            const somaOutro = (meuID==='Ele'?(d.cEla||[]):(d.cEle||[])).reduce((a,b)=>a+b,0);
-            fimDeJogo("VOCÊ ESTOUROU!", somaEu, somaOutro);
+            exibirResultado('perdeu', `Você fez ${somaEu} e estourou!`);
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
         }
 
-        // Fim da rodada se ambos pararem
         if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
-            compararResultados(d);
+            compararFinal(d);
         }
     });
+
+    function compararFinal(d) {
+        let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
+        let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
+        let meuPlacar = meuID === 'Ele' ? sEle : sEla;
+        let outroPlacar = meuID === 'Ele' ? sEla : sEle;
+        
+        let vencedor = "";
+        if(sEle > 21) vencedor = "Ela";
+        else if(sEla > 21) vencedor = "Ele";
+        else if(sEle > sEla) vencedor = "Ele";
+        else if(sEla > sEle) vencedor = "Ela";
+        else vencedor = "Empate";
+
+        if(vencedor === meuID) {
+            exibirResultado('ganhou', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
+        } else if(vencedor === "Empate") {
+            alert("EMPATE! " + sEle + " a " + sEla);
+        } else {
+            exibirResultado('perdeu', `Você: ${meuPlacar} | Oponente: ${outroPlacar}`);
+        }
+        
+        if(vencedor !== "Empate") processarVitoria(vencedor);
+    }
+
+    function exibirResultado(tipo, texto) {
+        if(tipo === 'ganhou') {
+            sWin.currentTime = 0; sWin.play();
+            document.getElementById('info-ganhou').innerText = texto;
+            document.getElementById('modal-ganhou').style.display = 'flex';
+        } else {
+            sBoom.currentTime = 0; sBoom.play();
+            document.getElementById('info-perdeu').innerText = texto;
+            document.getElementById('modal-perdeu').style.display = 'flex';
+        }
+    }
 
     function comprar() {
         const n = Math.floor(Math.random() * 10) + 2;
         db.once('value', s => {
-            let d = s.val();
-            let mao = meuID === 'Ele' ? (d.cEle || []) : (d.cEla || []);
+            let mao = meuID === 'Ele' ? (s.val().cEle || []) : (s.val().cEla || []);
             mao.push(n);
             db.update({ [meuID === 'Ele' ? 'cEle' : 'cEla']: mao });
         });
@@ -207,35 +228,17 @@
         db.update({ turno: prox, [meuID === 'Ele' ? 'parouEle' : 'parouEla']: true });
     }
 
-    function compararResultados(d) {
-        let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
-        let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let v = "";
-        if(sEle > 21) v = "Ela";
-        else if(sEla > 21) v = "Ele";
-        else if(sEle > sEla) v = "Ele";
-        else if(sEla > sEle) v = "Ela";
-        else v = "Empate";
-        fimDeJogo(v === "Empate" ? "EMPATE!" : v + " GANHOU!", sEle, sEla);
-        if(v !== "Empate") processarVitoria(v);
-    }
-
-    function fimDeJogo(txt, sEle, sEla) {
-        sBoom.play();
-        document.getElementById('msg-final').innerHTML = `${txt}<br><span style='font-size:1rem'>Ele: ${sEle} | Ela: ${sEla}</span>`;
-        document.getElementById('tela-explosao').style.display = 'flex';
-    }
-
-    function processarVitoria(vencedor) {
+    function processarVitoria(v) {
         db.once('value', s => {
             if(s.val().vitoriaProcessada) return;
-            let f = vencedor === 'Ele' ? 'pEle' : 'pEla';
+            let f = v === 'Ele' ? 'pEle' : 'pEla';
             db.update({ [f]: (s.val()[f] || 0) + 1, vitoriaProcessada: true });
         });
     }
 
     function novoJogo() {
-        document.getElementById('tela-explosao').style.display = 'none';
+        document.getElementById('modal-ganhou').style.display = 'none';
+        document.getElementById('modal-perdeu').style.display = 'none';
         db.update({ cEle: [], cEla: [], parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' });
     }
 </script>
