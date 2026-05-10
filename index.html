@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Duelo - Zerado</title>
+    <title>Blackjack Duelo - Troféu e Mensagens</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -25,8 +25,6 @@
         .btn-game { width: 75px; height: 75px; border-radius: 50%; border: 4px solid white; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-hit { background: #0066ff; }
         .btn-stay { background: #dd0000; }
-        
-        /* OVERLAY INICIAL */
         #overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px; }
         .avatar-opt { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background-size: cover; }
@@ -40,29 +38,28 @@
 <audio id="snd-win" src="https://files.catbox.moe/p6x15o.mp3"></audio>
 
 <div id="modal-perdeu" class="modal-alerta">
-    <img src="https://files.catbox.moe/2hwdjc.gif">
-    <h2 style="color: #ff4444;">ESTOUROU!</h2>
+    <img id="img-perdeu" src="https://files.catbox.moe/2hwdjc.gif">
+    <h2 id="titulo-perdeu" style="color: #ff4444;">ESTOUROU!</h2>
+    <p id="msg-perdeu" style="font-weight: bold;"></p>
     <button style="padding: 15px 30px; background: white; border-radius: 10px; font-weight: bold; border: none;" onclick="novoJogo()">TENTAR DE NOVO</button>
 </div>
 
 <div id="modal-ganhou" class="modal-alerta">
-    <img src="https://files.catbox.moe/39b2od.gif">
-    <h2 style="color: #ffcc00;">VITÓRIA!</h2>
+    <img src="https://files.catbox.moe/xkxzyl.webp">
+    <h2 style="color: #ffcc00;">VOCÊ GANHOU!</h2>
+    <p id="msg-ganhou" style="font-weight: bold;"></p>
     <button style="padding: 15px 30px; background: #ffcc00; border-radius: 10px; font-weight: bold; border: none;" onclick="novoJogo()">NOVA PARTIDA</button>
 </div>
 
 <div id="overlay">
     <h2 style="color: gold">BLACKJACK DUO</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
-    
     <div style="display: flex; gap: 15px; margin-bottom: 20px;">
         <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none; border-radius: 5px;">ELE</button>
         <button onclick="setRole('Ela')" id="bEla" style="padding: 10px 25px; background: #ff007f; color: white; border: none; border-radius: 5px;">ELA</button>
     </div>
-
     <button id="btnStart" style="padding: 15px 40px; background: gold; border: none; display: none; font-weight: bold; border-radius: 30px; margin-bottom: 10px;" onclick="entrar()">JOGAR</button>
-    
-    <button onclick="resetGeral()" style="background: none; border: 1px solid #444; color: #777; font-size: 0.7rem; padding: 5px 10px; border-radius: 5px;">LIMPAR BANCO DE DADOS (Zerar Tudo)</button>
+    <button onclick="resetGeral()" style="background: none; border: 1px solid #444; color: #777; font-size: 0.7rem; padding: 5px 10px; border-radius: 5px;">LIMPAR BANCO DE DADOS</button>
 </div>
 
 <div id="mesa">
@@ -99,7 +96,6 @@
     const sBoom = document.getElementById('snd-boom');
     const sWin = document.getElementById('snd-win');
 
-    // SETUP AVATARES
     const seeds = ["Jack", "Milo", "Jasper", "Leo", "Oliver", "Aneka", "Luna", "Zoe", "Sasha", "Mia"];
     seeds.forEach(s => {
         const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}`;
@@ -121,17 +117,6 @@
         if(meuAvUrl) document.getElementById('btnStart').style.display = 'block';
     }
 
-    function resetGeral() {
-        if(confirm("Isso vai zerar o placar e as mãos de todos. Continuar?")) {
-            db.set({ 
-                cEle: [], cEla: [], pEle: 0, pEla: 0, 
-                parouEle: false, parouEla: false, 
-                vitoriaProcessada: false, turno: 'Ele' 
-            });
-            alert("Banco de dados resetado!");
-        }
-    }
-
     function entrar() {
         document.getElementById('overlay').style.display = 'none';
         document.getElementById('meu-avatar-img').style.backgroundImage = `url('${meuAvUrl}')`;
@@ -142,19 +127,15 @@
     db.on('value', (snapshot) => {
         const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
         
-        // Se as cartas sumirem, fecha os modais
         if ((!d.cEle || d.cEle.length === 0) && (!d.cEla || d.cEla.length === 0)) {
             document.getElementById('modal-ganhou').style.display = 'none';
             document.getElementById('modal-perdeu').style.display = 'none';
-            sWin.pause(); sWin.currentTime = 0;
-            sBoom.pause(); sBoom.currentTime = 0;
         }
 
         document.getElementById('p-ele').innerText = d.pEle || 0;
         document.getElementById('p-ela').innerText = d.pEla || 0;
         if(d.avEle) document.getElementById('mini-ele').style.backgroundImage = `url('${d.avEle}')`;
         if(d.avEla) document.getElementById('mini-ela').style.backgroundImage = `url('${d.avEla}')`;
-        
         const imgOp = meuID === 'Ele' ? d.avEla : d.avEle;
         if(imgOp) document.getElementById('oponente-img').style.backgroundImage = `url('${imgOp}')`;
 
@@ -174,18 +155,13 @@
 
         area.innerHTML = "";
         let somaEu = 0;
-        minhas.forEach(n => {
-            somaEu += n;
-            const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c);
-        });
+        minhas.forEach(n => { somaEu += n; const c = document.createElement('div'); c.className = "card"; c.innerText = n; area.appendChild(c); });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
+        // Lógica de estouro imediato
         if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu');
+            exibirResultado('perdeu', somaEu, 0, true);
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
-        } else if(somaEu === 21 && !d.vitoriaProcessada && d.turno === meuID) {
-            exibirResultado('ganhou');
-            processarVitoria(meuID);
         }
 
         if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
@@ -196,18 +172,47 @@
     function compararFinal(d) {
         let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
         let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let v = sEle > sEla ? 'Ele' : (sEla > sEle ? 'Ela' : 'Empate');
-        if(v === meuID) exibirResultado('ganhou');
-        else if(v === 'Empate') { alert("EMPATE!"); novoJogo(); }
-        else exibirResultado('perdeu');
-        if(v !== "Empate") processarVitoria(v);
+        let meuS = meuID === 'Ele' ? sEle : sEla;
+        let oponenteS = meuID === 'Ele' ? sEla : sEle;
+        
+        let vencedor = "";
+        if(sEle > 21) vencedor = "Ela";
+        else if(sEla > 21) vencedor = "Ele";
+        else if(sEle > sEla) vencedor = "Ele";
+        else if(sEla > sEle) vencedor = "Ela";
+        else vencedor = "Empate";
+
+        if(vencedor === meuID) {
+            exibirResultado('ganhou', meuS, oponenteS);
+        } else if(vencedor === "Empate") {
+            alert("EMPATE!"); novoJogo();
+        } else {
+            exibirResultado('perdeu', meuS, oponenteS, false);
+        }
+        if(vencedor !== "Empate") processarVitoria(vencedor);
     }
 
-    function exibirResultado(tipo) {
+    function exibirResultado(tipo, meuS, oponenteS, estourou) {
         if(tipo === 'ganhou') {
-            sWin.play(); document.getElementById('modal-ganhou').style.display = 'flex';
+            sWin.play();
+            document.getElementById('msg-ganhou').innerText = `Você: ${meuS} vs Oponente: ${oponenteS}`;
+            document.getElementById('modal-ganhou').style.display = 'flex';
         } else {
-            sBoom.play(); document.getElementById('modal-perdeu').style.display = 'flex';
+            sBoom.play();
+            const titulo = document.getElementById('titulo-perdeu');
+            const msg = document.getElementById('msg-perdeu');
+            const img = document.getElementById('img-perdeu');
+            
+            if(estourou) {
+                titulo.innerText = "ESTOUROU!";
+                msg.innerText = `Você fez ${meuS} e passou de 21!`;
+                img.style.display = "block"; // Mostra o GIF de explosão
+            } else {
+                titulo.innerText = "VISH, PAROU MUITO CEDO!";
+                msg.innerText = `Você: ${meuS} vs Oponente: ${oponenteS}`;
+                img.style.display = "none"; // Esconde o GIF de explosão (opcional)
+            }
+            document.getElementById('modal-perdeu').style.display = 'flex';
         }
     }
 
@@ -235,6 +240,12 @@
 
     function novoJogo() {
         db.update({ cEle: [], cEla: [], parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' });
+    }
+
+    function resetGeral() {
+        if(confirm("Zerar tudo?")) {
+            db.set({ cEle: [], cEla: [], pEle: 0, pEla: 0, parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' });
+        }
     }
 </script>
 </body>
