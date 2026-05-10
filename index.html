@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blackjack Arena - Winner Update</title>
+    <title>Blackjack Arena - Sincronia Total</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -49,18 +49,18 @@
     <img src="https://files.catbox.moe/2hwdjc.gif">
     <h2 style="color: #ff4444;">BOOM! ESTOUROU!</h2>
     <p id="info-perdeu"></p>
-    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">NOVA CHANCE</button>
+    <button style="padding: 15px 30px; background: white; border: none; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">NOVA CHANCE</button>
 </div>
 
 <div id="modal-ganhou" class="modal-alerta">
     <img src="https://files.catbox.moe/39b2od.gif">
-    <h2 style="color: #ffcc00;">VOCÊ É O CAMPEÃO!</h2>
+    <h2 style="color: #ffcc00;">VITÓRIA!</h2>
     <p id="info-ganhou"></p>
-    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="novoJogo()">JOGAR NOVAMENTE</button>
+    <button style="padding: 15px 30px; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold;" onclick="cliqueNovaChance()">JOGAR NOVAMENTE</button>
 </div>
 
 <div id="overlay">
-    <h2 style="color: gold">BLACKJACK ARENA</h2>
+    <h2 style="color: gold">BLACKJACK DUO</h2>
     <div class="avatar-grid" id="avatarGrid"></div>
     <div style="display: flex; gap: 15px;">
         <button onclick="setRole('Ele')" id="bEle" style="padding: 10px 25px; background: #0066ff; color: white; border: none;">ELE</button>
@@ -75,7 +75,7 @@
             <div id="mini-ele" class="mini-av"></div>
             <span id="p-ele" class="score-val">0</span>
         </div>
-        <div id="indicador-turno" class="turn-indicator">AGUARDANDO</div>
+        <div id="indicador-turno" class="turn-indicator">CARREGANDO</div>
         <div style="text-align: center;">
             <div id="mini-ela" class="mini-av"></div>
             <span id="p-ela" class="score-val">0</span>
@@ -99,7 +99,7 @@
 <script>
     const firebaseConfig = { databaseURL: "https://project-a3660c8f-d710-41a4-a09-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("blackjack_final_v12");
+    const db = firebase.database().ref("blackjack_sincronizado_v13");
 
     let meuID = "", meuAvUrl = "";
     const sCard = document.getElementById('snd-card');
@@ -136,6 +136,13 @@
 
     db.on('value', (snapshot) => {
         const d = snapshot.val() || { cEle: [], cEla: [], pEle: 0, pEla: 0, turno: 'Ele' };
+
+        // FECHAMENTO AUTOMÁTICO DE MODAIS (SINCRONIZAÇÃO)
+        // Se no Firebase 'resetar' for true, significa que alguém clicou em Nova Chance
+        if(d.resetarRodada) {
+            fecharModais();
+            return; // Interrompe o processamento para limpar a tela primeiro
+        }
         
         document.getElementById('p-ele').innerText = d.pEle || 0;
         document.getElementById('p-ela').innerText = d.pEla || 0;
@@ -170,27 +177,58 @@
         });
         document.getElementById('soma-label').innerText = "Soma: " + somaEu;
 
-        // VERIFICAÇÃO DE ESTOURO (TEMPO REAL)
+        // VERIFICAÇÕES DE FIM DE RODADA
         if(somaEu > 21 && !d.vitoriaProcessada) {
-            exibirResultado('perdeu', `Você estourou com ${somaEu}!`);
+            exibirResultado('perdeu', `Você estourou!`);
             processarVitoria(meuID === 'Ele' ? 'Ela' : 'Ele');
         } else if (somaOp > 21 && !d.vitoriaProcessada) {
-            exibirResultado('ganhou', `O oponente estourou! Você venceu.`);
+            exibirResultado('ganhou', `Oponente estourou!`);
             processarVitoria(meuID);
         }
 
-        // COMPARAÇÃO FINAL QUANDO AMBOS PARAM
         if(d.parouEle && d.parouEla && !d.vitoriaProcessada) {
             compararFinal(d);
         }
     });
 
+    function cliqueNovaChance() {
+        // Envia sinal para o Firebase que a rodada deve ser resetada para AMBOS
+        db.update({ 
+            resetarRodada: true,
+            cEle: [], cEla: [], 
+            parouEle: false, parouEla: false, 
+            vitoriaProcessada: false, 
+            turno: 'Ele' 
+        });
+
+        // Após um pequeno delay, remove o sinal de reset para permitir novas jogadas
+        setTimeout(() => {
+            db.update({ resetarRodada: false });
+        }, 500);
+    }
+
+    function fecharModais() {
+        document.getElementById('modal-ganhou').style.display = 'none';
+        document.getElementById('modal-perdeu').style.display = 'none';
+        sWin.pause(); sWin.currentTime = 0;
+        sBoom.pause(); sBoom.currentTime = 0;
+    }
+
+    function exibirResultado(tipo, texto) {
+        if(tipo === 'ganhou') {
+            sWin.play();
+            document.getElementById('info-ganhou').innerText = texto;
+            document.getElementById('modal-ganhou').style.display = 'flex';
+        } else {
+            sBoom.play();
+            document.getElementById('info-perdeu').innerText = texto;
+            document.getElementById('modal-perdeu').style.display = 'flex';
+        }
+    }
+
     function compararFinal(d) {
         let sEle = (d.cEle || []).reduce((a,b)=>a+b,0);
         let sEla = (d.cEla || []).reduce((a,b)=>a+b,0);
-        let meuTotal = meuID === 'Ele' ? sEle : sEla;
-        let opTotal = meuID === 'Ele' ? sEla : sEle;
-        
         let vencedor = "";
         if(sEle > 21) vencedor = "Ela";
         else if(sEla > 21) vencedor = "Ele";
@@ -198,28 +236,11 @@
         else if(sEla > sEle) vencedor = "Ela";
         else vencedor = "Empate";
 
-        if(vencedor === meuID) {
-            exibirResultado('ganhou', `Você: ${meuTotal} | Oponente: ${opTotal}`);
-        } else if(vencedor === "Empate") {
-            alert("EMPATE TÉCNICO!");
-            novoJogo();
-        } else {
-            exibirResultado('perdeu', `Você: ${meuTotal} | Oponente: ${opTotal}`);
-        }
+        if(vencedor === meuID) exibirResultado('ganhou', "Você venceu por pontos!");
+        else if(vencedor === "Empate") cliqueNovaChance();
+        else exibirResultado('perdeu', "Oponente fez mais pontos!");
         
         if(vencedor !== "Empate") processarVitoria(vencedor);
-    }
-
-    function exibirResultado(tipo, texto) {
-        if(tipo === 'ganhou') {
-            sWin.currentTime = 0; sWin.play();
-            document.getElementById('info-ganhou').innerText = texto;
-            document.getElementById('modal-ganhou').style.display = 'flex';
-        } else {
-            sBoom.currentTime = 0; sBoom.play();
-            document.getElementById('info-perdeu').innerText = texto;
-            document.getElementById('modal-perdeu').style.display = 'flex';
-        }
     }
 
     function comprar() {
@@ -242,12 +263,6 @@
             let f = v === 'Ele' ? 'pEle' : 'pEla';
             db.update({ [f]: (s.val()[f] || 0) + 1, vitoriaProcessada: true });
         });
-    }
-
-    function novoJogo() {
-        document.getElementById('modal-ganhou').style.display = 'none';
-        document.getElementById('modal-perdeu').style.display = 'none';
-        db.update({ cEle: [], cEla: [], parouEle: false, parouEla: false, vitoriaProcessada: false, turno: 'Ele' });
     }
 </script>
 </body>
